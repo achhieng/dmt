@@ -896,6 +896,14 @@ table.sum td:first-child{font-family:var(--f-body)}
 @media (max-width:760px){.trace{left:12px;right:12px;width:auto;bottom:44px;max-height:55%}.trace-open .statusbar{left:12px}.trace-open .modehint{display:none}}
 .brand h1 .dmt{font-family:var(--f-mono);font-size:.55em;font-weight:600;letter-spacing:.06em;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;vertical-align:.3em;margin-left:4px}
 @media (max-width:480px){.brand h1 .dmt{display:none}}
+.expmenu{position:fixed;z-index:3000;display:flex;flex-direction:column;gap:2px;padding:6px;max-height:calc(100vh - 16px);overflow:auto}
+.expmenu .em-head{display:flex;flex-direction:column;gap:2px;padding:4px 8px 6px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.expmenu button{display:grid;grid-template-columns:1fr auto;gap:1px 8px;text-align:left;border:1px solid transparent;background:none;border-radius:6px;padding:7px 8px;cursor:pointer;color:var(--ink)}
+.expmenu button:hover,.expmenu button:focus-visible{background:var(--panel-2);border-color:var(--line);outline:none}
+.expmenu button .hint{grid-column:1/-1;font-size:11.5px;margin:0}.expmenu .em-ext{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.expmenu .em-pack{border-color:var(--accent)}.expmenu .em-pack b{color:var(--accent)}
+.expmenu .em-foot{margin:4px 8px 2px;font-size:11.5px}
+.expgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.expgrid .btn{flex-direction:column;align-items:flex-start;gap:1px;white-space:normal}.expgrid .btn span{font-family:var(--f-mono);font-size:11px;opacity:.75}.expgrid .btn:first-child{grid-column:1/-1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -912,7 +920,7 @@ table.sum td:first-child{font-family:var(--f-body)}
     <div class="hdr-actions">
       <button class="btn" id="liveBtn" aria-pressed="false" title="Live view: present the map with labels, colours and totals">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg><span class="lbl">Live view</span></button>
-      <button class="btn primary" id="exportBtn"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0l-3-3m3 3l3-3M2 12v2h12v-2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">Export GeoJSON</span></button>
+      <button class="btn primary" id="exportBtn"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0l-3-3m3 3l3-3M2 12v2h12v-2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">Export</span></button>
     </div>
   </header>
 
@@ -1451,10 +1459,6 @@ function importGeoJSON(txt){
 let downloads=null;
 function usedLevels(){const u=new Set([...S.feats.values()].map(f=>f.props.level));return LEVELS.filter(l=>u.has(l.id))}
 function chosenLevels(){const u=usedLevels().map(l=>l.id);return S.expLevels?u.filter(x=>S.expLevels.includes(x)):u}
-async function saveText(filename,text){
-  if(downloads){try{await downloads.save({filename,data:new Blob([text],{type:"application/json"})});toast("Saved "+filename);return true}
-    catch(e){if(e&&e.code==="declined")return false;if(e&&e.code==="rate_limited"){toast("A save prompt is already open.");return false}}}
-  try{await navigator.clipboard.writeText(text);toast("Downloads aren’t available here, so the GeoJSON was copied to your clipboard.")}catch{S.tab="geojson";renderPanel();toast("Copy the GeoJSON from the panel.")}return false}
 async function exportPerLevel(){toast("Preparing GeoJSON with the detailed coastline…");await ensureDetailForAll();const proj=S.projects.find(p=>p.id===S.pid);const base=((proj&&proj.name)||"boundaries").replace(/[^\w\-]+/g,"_").replace(/^_|_$/g,"")||"boundaries";
   for(const l of chosenLevels()){const fc=toFC(null,{levels:[l]});if(!fc.features.length)continue;const ok=await saveText(`${base}_${l}.geojson.json`,JSON.stringify(fc));if(!ok&&!downloads)return}}
 async function exportFile(onlyId){
@@ -1518,7 +1522,7 @@ function inspectPanel(){
   <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" data-p="notes" placeholder="Source, legislation, revision notes…">${esc(p.notes)}</textarea></div>
   <div class="field"><label>Extra attributes</label><div class="kv" id="kv">${cust.map(([k,v],i)=>`<input data-ck="${i}" value="${esc(k)}" aria-label="Attribute name"><input data-cv="${i}" value="${esc(v)}" aria-label="Attribute value"><button class="iconbtn" data-cdel="${i}" aria-label="Remove attribute"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6"/></svg></button>`).join("")}</div>
   <div class="row"><button class="btn small" data-act="addkv">+ Add attribute</button><span class="hint">e.g. electors, enrolment, gazettal date</span></div></div>
-  <div class="row"><button class="btn small" data-act="exportone" title="Includes every area generated or drawn inside it">Export with areas inside</button>`;
+  <div class="row"><button class="btn small" data-act="exportone" data-expmenu title="GeoJSON, Google Earth, Shapefile and more. Includes every area generated or drawn inside it">Export with areas inside…</button>`;
   h+=S.confirm===f.id?`</div><div class="confirm">Delete “${esc(p.name)}”? <button class="btn small danger" data-act="delyes">Delete</button><button class="btn small" data-act="delno">Keep</button></div>`:`<button class="btn small danger" data-act="del">Delete</button></div>`;
   return h;
 }
@@ -1527,9 +1531,10 @@ function geojsonPanel(){
   const fc=toFC(null,{levels:ch});const txt=JSON.stringify(fc,null,1);const big=txt.length>120000;
   return`<div class="row" style="justify-content:space-between"><p class="eyebrow">Live GeoJSON · ${fc.features.length.toLocaleString("en-AU")} feature${fc.features.length===1?"":"s"}</p><span class="hint">${(txt.length/1024).toFixed(0)} KB</span></div>
   ${lvls.length?`<div class="field"><label>Include</label><div class="lvchecks">${lvls.map(l=>`<label class="chk"><input type="checkbox" data-explv="${l.id}"${ch.includes(l.id)?" checked":""}> <span class="sw" style="color:var(${l.tok})"></span>${esc(l.name)} · ${(counts[l.id]||0).toLocaleString("en-AU")}</label>`).join("")}</div></div>`:""}
-  <div class="row"><button class="btn primary" data-act="export">Download one file</button><button class="btn" data-act="exportlevels">One file per level</button><button class="btn" data-act="copy">Copy</button></div>
+  <p class="eyebrow">Download</p><div class="expgrid">${EXP_FORMATS.map(f=>`<button class="btn${f.id==="pack"?" primary":""}" data-act="fmt" data-fmt="${f.id}" title="${esc(f.desc)}"><b>${esc(f.name)}</b><span>.${f.ext}</span></button>`).join("")}</div>
+  <div class="row"><button class="btn small" data-act="exportlevels">GeoJSON, one file per level</button><button class="btn small" data-act="copy">Copy GeoJSON</button></div>
   <p class="hint">Every feature carries its level, parent_id and parent_name, so wards, SA2s, SA1s and precincts stay linked in GIS software.</p>
-  <p class="hint">Updates as you draw. RFC 7946, WGS84 lon/lat, coordinates to 6 decimals. Geometry is exported after coast clipping; area and density are computed.</p>
+  <p class="hint">Updates as you draw. RFC 7946, WGS84 lon/lat, coordinates to 6 decimals. Geometry is exported after coast clipping; area and density are computed. The full pack has GeoJSON, Google Earth KMZ and KML, Shapefile, TopoJSON, a CSV table, one file per level and a README.</p>
   <pre class="code" id="gj">${esc(big?txt.slice(0,120000)+"\n… (truncated in preview; Copy and Download include everything)":txt)}</pre>
   <p class="eyebrow">Import</p>
   <p class="hint">Bring in boundaries from any GeoJSON (ABS, AEC, council open data). Polygons become editable features; their properties carry over.</p>
@@ -1604,7 +1609,7 @@ async function act(a,b){
     case"trim":trimOverlaps(id);break;case"take":takeFromNeighbours(id);break;case"toparent":clipToParent(id);break;case"dup":duplicate(id);break;case"split":setTool("split");break;case"cleanup":cleanUpShape(id);break;
     case"addkv":{const f=S.feats.get(id);let k="attribute",i=1;while(k in f.props.custom)k="attribute_"+(++i);f.props.custom[k]="";persist(f);renderPanel();break}
     case"del":S.confirm=id;renderPanel();break;case"delno":S.confirm=null;renderPanel();break;case"delyes":S.confirm=null;deleteFeature(id);break;
-    case"exportone":exportFile(id);break;case"export":exportFile();break;case"exportlevels":exportPerLevel();break;
+    case"exportone":openExportMenu(b,{kind:"one",id});break;case"export":openExportMenu(b,{kind:"all"});break;case"fmt":runExport(b.dataset.fmt,{kind:"all"});break;case"exportlevels":exportPerLevel();break;
     case"copy":{const t=JSON.stringify(toFC(null,{levels:chosenLevels()}));try{await navigator.clipboard.writeText(t);toast("GeoJSON copied")}catch{const pre=$("#gj");const r=document.createRange();r.selectNodeContents(pre);getSelection().removeAllRanges();getSelection().addRange(r);toast("Press Ctrl/Cmd C to copy the selected GeoJSON")}break}
     case"import":importGeoJSON($("#paste").value);break;
     case"newproj":newProject();break;case"delproj":S.confirm="proj";renderPanel();break;
@@ -2539,7 +2544,7 @@ function multiPanel(){
   <div class="stats"><div><b>${fs.length.toLocaleString("en-AU")}</b><span>boundaries</span></div><div><b>${fmt(pop||null)}</b><span>people</span></div><div><b>${fmtA(area)}</b><span>km²</span></div></div>
   <div class="lvchecks">${lvls.map(l=>`<div class="row" style="justify-content:space-between"><span><span class="sw" style="color:var(${l.tok});display:inline-block;vertical-align:-1px;margin-right:6px"></span>${esc(l.name)} · ${by[l.id].toLocaleString("en-AU")}</span>${lvls.length>1?`<button class="btn small" data-ms-only="${l.id}">Keep only these</button>`:""}</div>`).join("")}</div>
   ${S.confirm==="multi"?`<div class="confirm" style="flex-direction:column;align-items:flex-start">Delete ${fs.length.toLocaleString("en-AU")} boundar${fs.length===1?"y":"ies"}?${inner?`<label class="chk"><input type="checkbox" id="ms-inner" checked> Also delete the ${inner.toLocaleString("en-AU")} area${inner===1?"":"s"} inside them</label>`:""}<div class="row"><button class="btn small danger" data-ms="delyes">Delete</button><button class="btn small" data-ms="delno">Keep</button></div></div>`
-  :`<div class="row"><button class="btn danger" data-ms="del">Delete selected</button>${fs.length>1?`<button class="btn" data-ms="merge" title="Join the selected shapes into one boundary; populations are added">Merge into one</button>`:""}<button class="btn" data-ms="export">Export selected</button></div>`}
+  :`<div class="row"><button class="btn danger" data-ms="del">Delete selected</button>${fs.length>1?`<button class="btn" data-ms="merge" title="Join the selected shapes into one boundary; populations are added">Merge into one</button>`:""}<button class="btn" data-ms="export" data-expmenu aria-haspopup="menu">Export selected…</button></div>`}
   <p class="eyebrow">Change all selected</p>
   <div class="grid2"><div class="field"><label for="ms-level">Level</label><select id="ms-level"><option value="">— keep —</option>${LEVELS.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select></div>
   <div class="field"><label for="ms-color">Colour</label><input id="ms-color" type="color" value="${esc(css((LV[fs[0]&&fs[0].props.level]||LV.custom).tok))}" style="height:35px;padding:3px"></div></div>
@@ -2551,7 +2556,7 @@ function bindMulti(P){bindSelectionControls(P);
   P.querySelectorAll("[data-ms]").forEach(b=>b.onclick=()=>{const a=b.dataset.ms;
     if(a==="clear")clearMulti();else if(a==="del"){S.confirm="multi";renderPanel()}else if(a==="delno"){S.confirm=null;renderPanel()}
     else if(a==="delyes"){const c=P.querySelector("#ms-inner");deleteMany([...S.multi],c?c.checked:false)}
-    else if(a==="merge")mergeMany([...S.multi]);else if(a==="export")exportSelected()});
+    else if(a==="merge")mergeMany([...S.multi]);else if(a==="export")openExportMenu(b,{kind:"sel"})});
   P.querySelectorAll("[data-ms-only]").forEach(b=>b.onclick=()=>{for(const id of [...S.multi]){const f=S.feats.get(id);if(!f||f.props.level!==b.dataset.msOnly)S.multi.delete(id)}afterMultiChange()});
   const lv=P.querySelector("#ms-level");if(lv)lv.onchange=()=>{if(lv.value)setManyProp("level",lv.value)};
   const co=P.querySelector("#ms-color");if(co)co.onchange=()=>setManyProp("color",co.value);
@@ -2841,6 +2846,141 @@ function traceInit(){
   map.on("zoomend moveend",()=>{if(TR.adjust)trPlaceHandles();if(TR.align)trAlignDraw()});
   renderTrace()}
 
+/* ---------- export: GeoJSON, Google Earth KMZ/KML, Shapefile, TopoJSON, CSV, full pack ---------- */
+const EXP_FORMATS=[
+  {id:"pack",name:"Full pack",ext:"zip",desc:"Every format below in one zip, plus one file per level and a README"},
+  {id:"geojson",name:"GeoJSON",ext:"geojson",desc:"QGIS, ArcGIS, geojson.io, Mapshaper, Felt"},
+  {id:"kmz",name:"Google Earth",ext:"kmz",desc:"Coloured, labelled, a folder per level"},
+  {id:"kml",name:"KML",ext:"kml",desc:"Google My Maps, Google Earth on the web"},
+  {id:"shp",name:"Shapefile",ext:"zip",desc:"ArcGIS, QGIS, MapInfo (.shp .shx .dbf .prj .cpg)"},
+  {id:"topojson",name:"TopoJSON",ext:"topojson",desc:"Compact, shared borders, for web maps"},
+  {id:"csv",name:"Attribute table",ext:"csv",desc:"Excel or Google Sheets, one row per boundary"}];
+const DL_OK=new Set("gif png jpg jpeg webp mp4 webm mov txt json md docx pptx epub csv ttf html svg pdf xlsx zip".split(" "));
+const ENC=new TextEncoder();
+
+/* zip writer (deflate when the browser can, otherwise stored) */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC_T[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+async function deflateRaw(u){if(typeof CompressionStream==="undefined"||u.length<64)return null;try{return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer())}catch{return null}}
+async function makeZip(files){const parts=[],cen=[];let off=0;const d=new Date();const time=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  for(const f of files){const data=typeof f.data==="string"?ENC.encode(f.data):f.data;const nm=ENC.encode(f.name);const crc=crc32(data);let comp=await deflateRaw(data),method=8;if(!comp||comp.length>=data.length){comp=data;method=0}
+    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,method,true);h.setUint16(10,time,true);h.setUint16(12,date,true);h.setUint32(14,crc,true);h.setUint32(18,comp.length,true);h.setUint32(22,data.length,true);h.setUint16(26,nm.length,true);
+    parts.push(new Uint8Array(h.buffer),nm,comp);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,method,true);c.setUint16(12,time,true);c.setUint16(14,date,true);c.setUint32(16,crc,true);c.setUint32(20,comp.length,true);c.setUint32(24,data.length,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+    cen.push(new Uint8Array(c.buffer),nm);off+=30+nm.length+comp.length}
+  const cs=cen.reduce((s,a)=>s+a.length,0);const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:"application/zip"})}
+
+/* save a file: real download on any normal website; inside claude.ai, through the viewer's save prompt */
+async function saveBlobAs(filename,blob){const ext=filename.split(".").pop().toLowerCase();
+  if(downloads){let fn=filename,data=blob,wrapped=false;
+    if(!DL_OK.has(ext)){if(ext==="geojson"||ext==="topojson")fn=filename+".json";else{data=await makeZip([{name:filename,data:new Uint8Array(await blob.arrayBuffer())}]);fn=filename+".zip";wrapped=true}}
+    try{await downloads.save({filename:fn,data});toast(wrapped?`Saved ${fn}. Unzip it to get ${filename}.`:"Saved "+fn);return true}
+    catch(e){const c=e&&e.code;if(c==="declined")return false;if(c==="rate_limited"){toast("A save prompt is already open.");return false}if(c==="too_large"){toast("That file is too large to save here. Use the standalone copy.");return false}}}
+  try{const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=filename;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);toast("Downloaded "+filename);return true}
+  catch(e){toast("The browser blocked the download.");return false}}
+async function saveText(filename,text){return saveBlobAs(filename.replace(/\.geojson\.json$/,".geojson"),new Blob([text],{type:"application/geo+json"}))}
+
+/* what to export */
+function expBase(scope){const proj=S.projects.find(p=>p.id===S.pid);const n=scope.kind==="one"?(S.feats.get(scope.id)||{props:{name:"boundary"}}).props.name:(proj?proj.name:"boundaries")+(scope.kind==="sel"?" selection":"");
+  return n.replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"")||"boundaries"}
+function expFC(scope){let fc;
+  if(scope.kind==="one")fc=toFC(scope.id);
+  else if(scope.kind==="sel"){const ids=new Set(S.multi);for(const id of insideOf([...ids]))ids.add(id);fc=toFC(null,{});fc.features=fc.features.filter(f=>ids.has(f.id))}
+  else fc=toFC(null,{levels:chosenLevels()});
+  delete fc.crs;fc.features=fc.features.map(f=>{try{return{...f,geometry:turf.rewind(f.geometry)}}catch{return f}});return fc}
+function expScopeLabel(scope){if(scope.kind==="one"){const f=S.feats.get(scope.id);const n=descendants(scope.id).size-1;return`“${f?f.props.name:""}”${n?` and ${n.toLocaleString("en-AU")} area${n===1?"":"s"} inside`:""}`}
+  if(scope.kind==="sel"){const n=S.multi.size,m=insideOf([...S.multi]).size;return`${n.toLocaleString("en-AU")} selected${m?` + ${m.toLocaleString("en-AU")} inside`:""}`}
+  const ch=chosenLevels();const n=[...S.feats.values()].filter(f=>ch.includes(f.props.level)).length;return`${n.toLocaleString("en-AU")} boundar${n===1?"y":"ies"} · ${ch.map(l=>LV[l].name).join(", ")||"no levels"}`}
+
+/* KML for Google Earth */
+const xesc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function hexOf(c){const cx=document.createElement("canvas").getContext("2d");cx.fillStyle="#888";cx.fillStyle=c;const v=cx.fillStyle;return/^#[0-9a-f]{6}$/i.test(v)?v:"#888888"}
+function kmlColor(hex,a){const h=hexOf(hex).slice(1);return a+h.slice(4,6)+h.slice(2,4)+h.slice(0,2)}
+function ringTxt(r){return r.map(c=>`${c[0]},${c[1]},0`).join(" ")}
+function polyKml(p){return`<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>${ringTxt(p[0])}</coordinates></LinearRing></outerBoundaryIs>${p.slice(1).map(r=>`<innerBoundaryIs><LinearRing><coordinates>${ringTxt(r)}</coordinates></LinearRing></innerBoundaryIs>`).join("")}</Polygon>`}
+function toKML(fc,title){const styles=new Map();const byLv=new Map();
+  for(const f of fc.features){const lv=f.properties.level;if(!byLv.has(lv))byLv.set(lv,[]);byLv.get(lv).push(f)}
+  const fe=f=>S.feats.get(f.id);const PROPS_SKIP=new Set(["id"]);
+  const styleFor_=f=>{const lv=LV[f.properties.level]||LV.custom;const own=fe(f)&&fe(f).props.color;const col=hexOf(own||css(lv.tok));const key=f.properties.level+col;
+    if(!styles.has(key)){const many=/^(sa1|precinct)$/.test(f.properties.level);const w=f.properties.level==="state"?3:many?1.2:/^(sa2)$/.test(f.properties.level)?1.6:2.4;
+      styles.set(key,{id:"s"+styles.size,xml:`<LineStyle><color>${kmlColor(col,"ff")}</color><width>${w}</width></LineStyle><PolyStyle><color>${kmlColor(col,many?"26":"40")}</color></PolyStyle><IconStyle><scale>0</scale></IconStyle><LabelStyle><scale>${many?.7:f.properties.level==="sa2"?.85:1.1}</scale></LabelStyle>`})}return styles.get(key).id};
+  const desc=p=>`<![CDATA[<table style="font:13px sans-serif;border-collapse:collapse">${Object.entries(p).filter(([k,v])=>v!=null&&v!==""&&!PROPS_SKIP.has(k)).map(([k,v])=>`<tr><td style="color:#666;padding:2px 10px 2px 0">${xesc(k.replace(/_/g," "))}</td><td style="padding:2px 0">${xesc(typeof v==="number"?v.toLocaleString("en-AU"):v)}</td></tr>`).join("")}</table>`.replace(/]]>/g,"]]]]><![CDATA[>")+"]]>";
+  const pm=f=>{const g=f.geometry;const polys=g.type==="Polygon"?[g.coordinates]:g.coordinates;let lab=null;try{lab=turf.pointOnFeature(f).geometry.coordinates}catch{}
+    return`<Placemark id="${xesc(f.id)}"><name>${xesc(f.properties.name||"")}</name><description>${desc(f.properties)}</description><styleUrl>#${styleFor_(f)}</styleUrl><ExtendedData>${Object.entries(f.properties).filter(([,v])=>v!=null).map(([k,v])=>`<Data name="${xesc(k)}"><value>${xesc(v)}</value></Data>`).join("")}</ExtendedData><MultiGeometry>${lab?`<Point><coordinates>${lab[0]},${lab[1]},0</coordinates></Point>`:""}${polys.map(polyKml).join("")}</MultiGeometry></Placemark>`};
+  const folders=LEVELS.filter(l=>byLv.has(l.id)).map(l=>{const fs=byLv.get(l.id);return`<Folder><name>${xesc(l.name)} (${fs.length})</name><open>${fs.length<200?1:0}</open>${fs.map(pm).join("\n")}</Folder>`}).join("\n");
+  return`<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xesc(title)}</name><open>1</open><description>Exported from Drew’s Mapping Tool on ${new Date().toISOString().slice(0,10)}. WGS84.</description>\n${[...styles.values()].map(s=>`<Style id="${s.id}">${s.xml}</Style>`).join("\n")}\n${folders}\n</Document></kml>\n`}
+
+/* Shapefile (polygon, WGS84, UTF-8 attributes) */
+function sArea(r){let a=0;for(let i=0;i<r.length-1;i++)a+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1];return a/2}
+function dbfFields(feats){const keys=[];for(const f of feats)for(const k of Object.keys(f.properties))if(!keys.includes(k))keys.push(k);const used=new Set();
+  return keys.map(k=>{let nm=k.toUpperCase().replace(/[^A-Z0-9_]/g,"_").slice(0,10)||"F";let i=1;while(used.has(nm)){const s=String(i++);nm=nm.slice(0,10-s.length)+s}used.add(nm);
+    const vals=feats.map(f=>f.properties[k]).filter(v=>v!=null&&v!=="");const num=vals.length&&vals.every(v=>typeof v==="number"&&isFinite(v));
+    if(num){const dec=Math.min(6,Math.max(0,...vals.map(v=>{const s=String(v);return s.includes(".")?s.split(".")[1].length:0})));const len=Math.max(1,...vals.map(v=>v.toFixed(dec).length));if(len<=19)return{key:k,name:nm,type:"N",len,dec}}
+    const len=Math.min(254,Math.max(1,...vals.map(v=>ENC.encode(typeof v==="object"?JSON.stringify(v):String(v)).length)));return{key:k,name:nm,type:"C",len,dec:0}})}
+function fitBytes(s,n){let b=ENC.encode(s);if(b.length<=n)return b;let t=s;while(ENC.encode(t).length>n)t=t.slice(0,-1);return ENC.encode(t)}
+function writeDBF(feats,fields){const hl=32+32*fields.length+1,rl=1+fields.reduce((s,f)=>s+f.len,0);const buf=new Uint8Array(hl+rl*feats.length+1);const dv=new DataView(buf.buffer);const d=new Date();
+  buf[0]=3;buf[1]=d.getFullYear()-1900;buf[2]=d.getMonth()+1;buf[3]=d.getDate();dv.setUint32(4,feats.length,true);dv.setUint16(8,hl,true);dv.setUint16(10,rl,true);
+  fields.forEach((f,i)=>{const o=32+32*i;buf.set(ENC.encode(f.name),o);buf[o+11]=f.type.charCodeAt(0);buf[o+16]=f.len;buf[o+17]=f.dec});buf[hl-1]=0x0d;
+  let o=hl;for(const ft of feats){buf[o++]=0x20;for(const f of fields){const v=ft.properties[f.key];buf.fill(0x20,o,o+f.len);
+      if(v!=null&&v!==""){if(f.type==="N"){const s=(+v).toFixed(f.dec);buf.set(ENC.encode(s.slice(-f.len)),o+f.len-Math.min(s.length,f.len))}else buf.set(fitBytes(typeof v==="object"?JSON.stringify(v):String(v),f.len),o)}o+=f.len}}
+  buf[o]=0x1a;return buf}
+function writeSHP(feats){const recs=feats.map(f=>{const g=f.geometry;const polys=g.type==="Polygon"?[g.coordinates]:g.coordinates;const rings=[];
+    for(const p of polys)p.forEach((r,i)=>{const a=sArea(r);rings.push((i===0?a>0:a<0)?r.slice().reverse():r)});
+    const pts=rings.flat();let bx=[Infinity,Infinity,-Infinity,-Infinity];for(const c of pts){bx[0]=Math.min(bx[0],c[0]);bx[1]=Math.min(bx[1],c[1]);bx[2]=Math.max(bx[2],c[0]);bx[3]=Math.max(bx[3],c[1])}
+    return{rings,n:pts.length,bx,len:44+4*rings.length+16*pts.length}});
+  const tb=[Infinity,Infinity,-Infinity,-Infinity];for(const r of recs){tb[0]=Math.min(tb[0],r.bx[0]);tb[1]=Math.min(tb[1],r.bx[1]);tb[2]=Math.max(tb[2],r.bx[2]);tb[3]=Math.max(tb[3],r.bx[3])}if(!recs.length)tb.fill(0);
+  const shpLen=100+recs.reduce((s,r)=>s+8+r.len,0),shxLen=100+8*recs.length;const shp=new DataView(new ArrayBuffer(shpLen)),shx=new DataView(new ArrayBuffer(shxLen));
+  for(const [v,len] of [[shp,shpLen],[shx,shxLen]]){v.setInt32(0,9994);v.setInt32(24,len/2);v.setInt32(28,1000,true);v.setInt32(32,5,true);tb.forEach((x,i)=>v.setFloat64(36+8*i,x,true))}
+  let o=100;recs.forEach((r,i)=>{shx.setInt32(100+8*i,o/2);shx.setInt32(104+8*i,r.len/2);shp.setInt32(o,i+1);shp.setInt32(o+4,r.len/2);let p=o+8;shp.setInt32(p,5,true);r.bx.forEach((x,k)=>shp.setFloat64(p+4+8*k,x,true));
+    shp.setInt32(p+36,r.rings.length,true);shp.setInt32(p+40,r.n,true);let idx=0,q=p+44;for(const ring of r.rings){shp.setInt32(q,idx,true);q+=4;idx+=ring.length}for(const ring of r.rings)for(const c of ring){shp.setFloat64(q,c[0],true);shp.setFloat64(q+8,c[1],true);q+=16}o+=8+r.len});
+  return{shp:new Uint8Array(shp.buffer),shx:new Uint8Array(shx.buffer)}}
+const PRJ_WGS84='GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]';
+function shapefileFiles(feats,name,dir){const {shp,shx}=writeSHP(feats);const p=(dir||"")+name;return[{name:p+".shp",data:shp},{name:p+".shx",data:shx},{name:p+".dbf",data:writeDBF(feats,dbfFields(feats))},{name:p+".prj",data:PRJ_WGS84},{name:p+".cpg",data:"UTF-8"}]}
+
+/* TopoJSON, CSV, README */
+function toTopo(fc,name){const t=topojson.topology({[name]:fc});t.name=name;return JSON.stringify(t)}
+function toCSV(fc){const keys=[];for(const f of fc.features)for(const k of Object.keys(f.properties))if(!keys.includes(k))keys.push(k);keys.push("label_lon","label_lat");
+  const q=v=>{if(v==null)return"";const s=typeof v==="object"?JSON.stringify(v):String(v);return/[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
+  const rows=fc.features.map(f=>{let lab=[null,null];try{lab=turf.pointOnFeature(f).geometry.coordinates.map(x=>+x.toFixed(6))}catch{}return keys.map(k=>k==="label_lon"?lab[0]:k==="label_lat"?lab[1]:f.properties[k]).map(q).join(",")});
+  return"﻿"+keys.join(",")+"\r\n"+rows.join("\r\n")+"\r\n"}
+function readme(fc,base,files){const by={};for(const f of fc.features)by[f.properties.level_name]=(by[f.properties.level_name]||0)+1;
+  return`${base}\r\nExported from Drew's Mapping Tool (DMT) on ${new Date().toLocaleString("en-AU")}\r\n\r\n${fc.features.length} boundaries:\r\n${Object.entries(by).map(([k,v])=>`  ${k}: ${v}`).join("\r\n")}\r\n\r\nCoordinate system: WGS84 longitude/latitude (EPSG:4326).\r\nGeometry is exported after coast clipping. Areas are in km² and computed on the ellipsoid.\r\n\r\nFiles\r\n${files.map(f=>"  "+f).join("\r\n")}\r\n\r\nOpening them\r\n  Google Earth (desktop or web): open ${base}.kmz. Each level is a folder you can tick on and off; click a boundary for its details.\r\n  Google My Maps: Import > ${base}.kml (My Maps allows up to 2,000 features per layer; use the per-level files for big sets).\r\n  QGIS: drag ${base}.geojson or any .shp into the map.\r\n  ArcGIS Pro / ArcMap / MapInfo: add shapefile/${base}.shp (all levels) or a file in shapefile/by_level.\r\n  geojson.io, Mapshaper, Felt, kepler.gl: drop in the .geojson or .topojson.\r\n  Excel / Google Sheets: ${base}_attributes.csv.\r\n\r\nFields\r\n  id, name, level, level_name, code, population, area_km2, density_per_km2, parent_id, parent_name, coast_mode, notes, plus any custom fields.\r\n  parent_id links SA1s and precincts to the ward or SA2 they sit in.\r\n  Shapefile field names are cut to 10 characters (e.g. DENSITY_PE, PARENT_NAM); text is UTF-8 (see .cpg).\r\n`}
+
+async function runExport(fmt,scope){scope=scope||{kind:"all"};const F=EXP_FORMATS.find(f=>f.id===fmt);closeExportMenu();
+  toast(`Preparing ${F.name}…`);await ensureDetailForAll();const fc=expFC(scope);if(!fc.features.length){toast(scope.kind==="all"&&!chosenLevels().length?"No levels are ticked for export.":"Nothing to export yet. Draw a boundary first.");return}
+  const base=expBase(scope),title=base.replace(/_/g," ");const blob=(t,type)=>new Blob([t],{type});
+  try{
+  if(fmt==="geojson")return saveBlobAs(base+".geojson",blob(JSON.stringify(fc),"application/geo+json"));
+  if(fmt==="kml")return saveBlobAs(base+".kml",blob(toKML(fc,title),"application/vnd.google-earth.kml+xml"));
+  if(fmt==="kmz")return saveBlobAs(base+".kmz",await makeZip([{name:"doc.kml",data:toKML(fc,title)}]));
+  if(fmt==="topojson")return saveBlobAs(base+".topojson",blob(toTopo(fc,base),"application/json"));
+  if(fmt==="csv")return saveBlobAs(base+"_attributes.csv",blob(toCSV(fc),"text/csv"));
+  const levels=LEVELS.filter(l=>fc.features.some(f=>f.properties.level===l.id));
+  if(fmt==="shp"){let files=shapefileFiles(fc.features,base,"");if(levels.length>1)for(const l of levels)files=files.concat(shapefileFiles(fc.features.filter(f=>f.properties.level===l.id),`${base}_${l.id}`,"by_level/"));
+    return saveBlobAs(base+"_shapefile.zip",await makeZip(files))}
+  if(fmt==="pack"){const kml=toKML(fc,title);const files=[{name:`${base}/${base}.geojson`,data:JSON.stringify(fc)},{name:`${base}/${base}.kmz`,data:new Uint8Array(await (await makeZip([{name:"doc.kml",data:kml}])).arrayBuffer())},
+      {name:`${base}/${base}.kml`,data:kml},{name:`${base}/${base}.topojson`,data:toTopo(fc,base)},{name:`${base}/${base}_attributes.csv`,data:toCSV(fc)}];
+    files.push(...shapefileFiles(fc.features,base,`${base}/shapefile/`));
+    if(levels.length>1)for(const l of levels){const sub={...fc,features:fc.features.filter(f=>f.properties.level===l.id)};files.push({name:`${base}/by_level/${base}_${l.id}.geojson`,data:JSON.stringify(sub)},{name:`${base}/by_level/${base}_${l.id}.kml`,data:toKML(sub,`${title} · ${l.name}`)},...shapefileFiles(sub.features,`${base}_${l.id}`,`${base}/shapefile/by_level/`))}
+    files.push({name:`${base}/README.txt`,data:readme(fc,base,files.map(f=>f.name.slice(base.length+1)))});
+    return saveBlobAs(base+"_full_pack.zip",await makeZip(files))}
+  }catch(e){console.error(e);toast("Export failed: "+(e&&e.message||e))}}
+
+/* export menu */
+let EXPM=null;
+function closeExportMenu(){if(EXPM){EXPM.remove();EXPM=null;document.removeEventListener("pointerdown",expOutside,true)}}
+function expOutside(e){if(EXPM&&!EXPM.contains(e.target)&&!e.target.closest("[data-expmenu]"))closeExportMenu()}
+function openExportMenu(anchor,scope){if(EXPM){closeExportMenu();return}scope=scope||{kind:"all"};
+  const m=document.createElement("div");m.className="card expmenu";m.setAttribute("role","menu");
+  m.innerHTML=`<div class="em-head"><span class="eyebrow">Export</span><span class="hint">${esc(expScopeLabel(scope))}</span></div>`+EXP_FORMATS.map(f=>`<button role="menuitem" data-fmt="${f.id}"${f.id==="pack"?' class="em-pack"':""}><b>${esc(f.name)}</b><span class="em-ext">.${f.ext}</span><span class="hint">${esc(f.desc)}</span></button>`).join("")+
+    (scope.kind==="all"&&usedLevels().length>1?`<p class="hint em-foot">Choose which levels to include in the GeoJSON tab.</p>`:"")+(downloads?`<p class="hint em-foot">In claude.ai, KMZ and KML arrive inside a .zip; unzip and open them.</p>`:"");
+  document.body.appendChild(m);EXPM=m;const r=anchor.getBoundingClientRect();const w=Math.min(340,innerWidth-16);m.style.width=w+"px";
+  const left=Math.max(8,Math.min(innerWidth-w-8,r.right-w));m.style.left=left+"px";const h=m.offsetHeight;let top=r.bottom+6;if(top+h>innerHeight-8)top=Math.max(8,r.top-h-6);m.style.top=top+"px";
+  m.querySelectorAll("[data-fmt]").forEach(b=>b.onclick=()=>runExport(b.dataset.fmt,scope));m.querySelector("[data-fmt]").focus();
+  setTimeout(()=>document.addEventListener("pointerdown",expOutside,true),0);
+  m.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();closeExportMenu();anchor.focus()}const bs=[...m.querySelectorAll("[data-fmt]")];const i=bs.indexOf(document.activeElement);if(e.key==="ArrowDown"){e.preventDefault();bs[(i+1)%bs.length].focus()}if(e.key==="ArrowUp"){e.preventDefault();bs[(i-1+bs.length)%bs.length].focus()}})}
+
 /* ---------- boot ---------- */
 function initMap(){
   map=L.map("map",{zoomControl:false,worldCopyJump:true,minZoom:2,maxZoom:22,doubleClickZoom:false,boxZoom:false}).setView([-37.86,144.97],10);
@@ -2866,7 +3006,7 @@ function initMap(){
 function wire(){
   document.querySelectorAll(".tool").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
   document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(S.live)setLive(false);setTab(b.id.slice(4))});
-  $("#liveBtn").onclick=()=>setLive(!S.live);$("#exportBtn").onclick=()=>exportFile();
+  $("#liveBtn").onclick=()=>setLive(!S.live);$("#exportBtn").onclick=()=>openExportMenu($("#exportBtn"),{kind:"all"});$("#exportBtn").setAttribute("data-expmenu","");$("#exportBtn").setAttribute("aria-haspopup","menu");
   $("#projSel").onchange=e=>{if(e.target.value==="__new"){renderProjSel();newProject()}else openProject(e.target.value)};
   document.addEventListener("keydown",e=>{
     const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
